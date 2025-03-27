@@ -6,6 +6,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.concurrent.ConcurrentHashMap;
 
+import io.github.Nyg404.Permission.DataServerPermission;
 import io.github.Nyg404.Utils.DataBaseConnect;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -54,24 +55,27 @@ public class DataServer {
              PreparedStatement stmt = connection.prepareStatement(insertServer)) {
             stmt.setLong(1, serverId);
             stmt.setString(2, prefix);
-
-            int rowsAffected = stmt.executeUpdate(); // Сначала выполняем запрос
+    
+            int rowsAffected = stmt.executeUpdate();
             if (rowsAffected > 0) {
-                // Затем коммитим изменения
+                // Сначала добавляем сервер в кэш
                 DataServer dataServer = new DataServer(serverId, prefix);
                 Cache.put(serverId, dataServer);
+    
+                // Затем добавляем права
+                
                 log.info("Сервер добавлен в базу данных и кэш.");
                 return true;
             } else {
-                log.error("Ошибка при добавление сервера");
+                log.error("Ошибка при добавлении сервера. Нет затронутых строк.");
                 return false;
             }
         } catch (SQLException e) {
-            log.error("Ошибка при добавлении сервера: " + e.getMessage());
-            e.printStackTrace(); // Детальное логирование исключения
+            log.error("Ошибка при добавлении сервера: " + e.getMessage(), e);
             return false;
         }
     }
+    
 
     public static boolean updatePrefix(long serverId, String newPrefix) {
         String updatePrefix = "UPDATE servers SET prefix = ? WHERE server_id = ?";
@@ -95,28 +99,30 @@ public class DataServer {
             return false;
         }
     }
-    public static String selectPrefix(Long serverId){
-        if(Cache.equals(serverId)){
+    
+    public static String selectPrefix(Long serverId) {
+        if (Cache.containsKey(serverId)) {
             return Cache.get(serverId).getPrefix();
         }
-        String selectPreifx = "SELECT prefix FROM servers WHERE server_id = ?";
-        try(Connection connection = DataBaseConnect.getInstance().connection()) {
-            try(PreparedStatement stmp = connection.prepareStatement(selectPreifx)) {
-                stmp.setLong(1, serverId);
-                try (ResultSet rs = stmp.executeQuery()){
-                    if(rs.next()){
+        
+        String selectPrefix = "SELECT prefix FROM servers WHERE server_id = ?";
+        try (Connection connection = DataBaseConnect.getInstance().connection()) {
+            try (PreparedStatement stmt = connection.prepareStatement(selectPrefix)) {
+                stmt.setLong(1, serverId);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
                         String prefix = rs.getString("prefix");
-
+                        // Кэшируем результат
                         Cache.put(serverId, new DataServer(serverId, prefix));
-
                         return prefix;
                     }
                 }
             }
-        } catch (SQLException e){
-            log.error("Ошибка получения префикса: " + e.getMessage());
+        } catch (SQLException e) {
+            log.error("Ошибка получения префикса: " + e.getMessage(), e);
         }
         return null;
     }
+    
 
 }

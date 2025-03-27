@@ -77,10 +77,16 @@ public class DataBaseConnect {
                 + "PRIMARY KEY (user_id, server_id), "
                 + "FOREIGN KEY (server_id) REFERENCES servers(server_id));";
 
+        String createServerPermisson = "CREATE TABLE IF NOT EXISTS servers_permission ("
+                + "server_id BIGINT PRIMARY KEY,"
+                + "setprefix INT DEFAULT 3,"
+                + "FOREIGN KEY (server_id) REFERENCES servers(server_id));";
+
         try (Connection conn = getInstance().connection(); 
              Statement stmt = conn.createStatement()) {
             stmt.executeUpdate(createServersTable); // Создание таблицы servers
-            stmt.executeUpdate(createUsersTable);   // Создание таблицы users
+            stmt.executeUpdate(createUsersTable); 
+            stmt.executeUpdate(createServerPermisson);  // Создание таблицы users
             log.info("Таблицы успешно созданы!");
         } catch (SQLException e) {
             e.printStackTrace();

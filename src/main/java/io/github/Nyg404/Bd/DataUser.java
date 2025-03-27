@@ -92,4 +92,34 @@ public class DataUser {
             log.error("SQL Ошибка при добавлении пользователя: " + e.getMessage(), e);
         }
     }
+
+    // Метод для получения прав пользователя, если он уже есть в кэше
+    public static int selectPermission(long userId, long serverId) {
+        String cacheKey = generateCacheKey(userId, serverId);
+
+        // Проверяем, есть ли пользователь в кэше
+        if (cache.containsKey(cacheKey)) {
+            DataUser user = cache.get(cacheKey);
+            return user.getPermissionLevel(); // Возвращаем уровень прав пользователя из кэша
+        }
+
+        // Если пользователя нет в кэше, выполняем запрос в базу данных
+        String selectPermission = "SELECT permissionlevel FROM users WHERE user_id = ? AND server_id = ?";
+        try (Connection connection = DataBaseConnect.getInstance().connection()) {
+            try (PreparedStatement preparedStatement = connection.prepareStatement(selectPermission)) {
+                preparedStatement.setLong(1, userId);
+                preparedStatement.setLong(2, serverId);
+                try (ResultSet rs = preparedStatement.executeQuery()) {
+                    if (rs.next()) {
+                        return rs.getInt("permissionlevel"); // Возвращаем уровень прав из базы данных
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            log.error("Ошибка при выполнении запроса для получения прав пользователя: " + e.getMessage(), e);
+        }
+
+        // Если пользователь не найден, возвращаем значение по умолчанию или -1
+        return -1;
+    }
 }

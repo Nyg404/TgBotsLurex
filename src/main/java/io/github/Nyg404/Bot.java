@@ -3,6 +3,7 @@ package io.github.Nyg404;
 import io.github.Nyg404.Bd.DataServer;
 import io.github.Nyg404.Command.CommandContext;
 import io.github.Nyg404.Command.PrefixUtils;
+import io.github.Nyg404.Permission.DataServerPermission;
 import io.github.Nyg404.Utils.DataBaseConnect;
 import io.github.Nyg404.Utils.DataBaseManager;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +42,7 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
         long chatId = message.getChatId();
         if (!DataBaseManager.isServerRegistered(chatId)) {
             DataBaseManager.addServerToDB(chatId, "/");
+            DataServerPermission.addDefaultPermissions(update.getMessage().getChatId());
         }
 
         String prefix = DataServer.selectPrefix(chatId);
