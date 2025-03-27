@@ -16,10 +16,12 @@ public class DataUser {
 
     private final Long userId;
     private final Integer level;
+    private final Integer permissionLevel;
 
-    public DataUser(long userId, int level) {
+    public DataUser(long userId, int level, int permissionLevel) {
         this.userId = userId;
         this.level = level;
+        this.permissionLevel = permissionLevel;
     }
 
     private static final ConcurrentHashMap<String, DataUser> cache = new ConcurrentHashMap<>();
@@ -42,7 +44,7 @@ public class DataUser {
                 try (ResultSet rs = statement.executeQuery()) {
                     if (rs.next()) {
                         // Создаем пользователя и кэшируем его
-                        user = new DataUser(rs.getLong("user_id"), rs.getInt("level"));
+                        user = new DataUser(rs.getLong("user_id"), rs.getInt("level"), rs.getInt("permissionlevel"));
                         cache.put(cacheKey, user);
                     }
                 }
@@ -65,8 +67,8 @@ public class DataUser {
     }
 
     // Метод для добавления пользователя в базу данных и кэш
-    public static void addUser(long userId, long serverId, int level) {
-        String insertQuery = "INSERT INTO users(user_id, server_id, level) VALUES (?,?,?)";
+    public static void addUser(long userId, long serverId, int level, int permissionLevel) {
+        String insertQuery = "INSERT INTO users(user_id, server_id, level, permissionlevel) VALUES (?,?,?,?)";
         String cacheKey = generateCacheKey(userId, serverId);
 
         try (Connection connection = DataBaseConnect.getInstance().connection()) {
@@ -74,11 +76,12 @@ public class DataUser {
                 stmt.setLong(1, userId);
                 stmt.setLong(2, serverId);
                 stmt.setInt(3, level);
+                stmt.setInt(4, permissionLevel);
 
                 int rowsAffected = stmt.executeUpdate();
                 if (rowsAffected > 0) {
                     // Добавляем нового пользователя в кэш
-                    DataUser newUser = new DataUser(userId, level);
+                    DataUser newUser = new DataUser(userId, level, permissionLevel);
                     cache.put(cacheKey, newUser);
                     log.info("Пользователь добавлен в базу данных и кэш.");
                 } else {

@@ -1,12 +1,12 @@
 package io.github.Nyg404.Utils;
 
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+
 @Slf4j
 public class DataBaseConnect {
     private static final String url = "jdbc:postgresql://localhost:5432/bib1";
@@ -14,15 +14,22 @@ public class DataBaseConnect {
     private static final String password = "7777";
     private static Connection connection;
 
-    private static DataBaseConnect instance = null;
+    private static volatile DataBaseConnect instance;
 
     // Статический блок инициализации синглтона
     static {
         instance = new DataBaseConnect();
     }
 
-    // Метод для получения экземпляра синглтона
+    // Метод для получения экземпляра синглтона с использованием double-checked locking
     public static DataBaseConnect getInstance() {
+        if (instance == null) {
+            synchronized (DataBaseConnect.class) {
+                if (instance == null) {
+                    instance = new DataBaseConnect();
+                }
+            }
+        }
         return instance;
     }
 
@@ -45,7 +52,7 @@ public class DataBaseConnect {
     }
 
     // Метод для закрытия соединения с базой данных
-    public static void disconnect() {
+    public void closeConnection() {
         if (connection != null) {
             try {
                 connection.close();
@@ -66,14 +73,15 @@ public class DataBaseConnect {
                 + "user_id BIGINT, "
                 + "server_id BIGINT, "
                 + "level INT DEFAULT 1, "
+                + "permissionlevel INT DEFAULT 0, "
                 + "PRIMARY KEY (user_id, server_id), "
                 + "FOREIGN KEY (server_id) REFERENCES servers(server_id));";
 
-
-        try (Connection conn = getInstance().connection(); Statement stmt = conn.createStatement()) {
+        try (Connection conn = getInstance().connection(); 
+             Statement stmt = conn.createStatement()) {
             stmt.executeUpdate(createServersTable); // Создание таблицы servers
             stmt.executeUpdate(createUsersTable);   // Создание таблицы users
-            System.out.println("Таблицы успешно созданы!");
+            log.info("Таблицы успешно созданы!");
         } catch (SQLException e) {
             e.printStackTrace();
         }

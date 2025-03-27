@@ -1,5 +1,6 @@
 package io.github.Nyg404;
 
+import io.github.Nyg404.Bd.DataServer;
 import io.github.Nyg404.Command.CommandContext;
 import io.github.Nyg404.Command.PrefixUtils;
 import io.github.Nyg404.Utils.DataBaseConnect;
@@ -11,7 +12,6 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
-
 @Slf4j
 public class Bot implements LongPollingSingleThreadUpdateConsumer {
 
@@ -19,74 +19,37 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
     private final OkHttpTelegramClient client;
     private final io.github.Nyg404.Update updatee;
     private final PrefixUtils prefixUtils;
+
     public Bot(String token) {
-        // Предполагаем, что конструктор OkHttpTelegramClient принимает токен:
-        this.telegramClient = new OkHttpTelegramClient(token);
         this.client = new OkHttpTelegramClient(token);
+        this.telegramClient = this.client; // Один объект на два поля
         this.updatee = new io.github.Nyg404.Update(telegramClient);
         this.prefixUtils = new PrefixUtils();
+        
+        // Создаем таблицы при старте
+        DataBaseConnect.createTables();
     }
 
     @Override
     public void consume(Update update) {
-
-        DataBaseConnect.createTables();
-
+        updatee.processUpdate(update);
         Message message = update.getMessage();
         if (message == null || !message.hasText()) {
             return; // Игнорируем обновления без текста
         }
 
         long chatId = message.getChatId();
-        String prefix = DataBaseManager.selectPrefix(chatId);  // Получаем префикс для чата
-        if (prefix == null || !message.getText().startsWith(prefix)) {
-            return;  // Игнорируем сообщения, не начинающиеся с префикса
+        if (!DataBaseManager.isServerRegistered(chatId)) {
+            DataBaseManager.addServerToDB(chatId, "/");
         }
 
-        CommandContext commandContext = new CommandContext(message, prefix);  // Создаем CommandContext
+        String prefix = DataServer.selectPrefix(chatId);
+        if (prefix == null || message.getText() == null || !message.getText().startsWith(prefix)) {
+            return; // Игнорируем сообщения без префикса
+        }
 
-        // Обрабатываем команду
+        CommandContext commandContext = new CommandContext(message, prefix);
         prefixUtils.handlePrefixCommand(commandContext);
-//        if (update.hasMessage() && update.getMessage().hasText()) {
-//            DataBaseConnect.createTables();
-//
-//            long chatId = update.getMessage().getChatId();
-//            long userId = update.getMessage().getFrom().getId();
-//
-//            // Регистрация сервера
-            if (!DataBaseManager.isServerRegistered(chatId)) {
-                DataBaseManager.addServerToDB(chatId, "/");
-            }
-//
-//            // Регистрация пользователя
-//            if (!DataBaseManager.isRegister(userId, chatId)) {
-//                DataBaseManager.addUser(userId, chatId, 1);
-//            }
-//
-//            System.out.printf("Автор: %s Сообщение: %s Сервер: %d Пользователь добавлен? %b%n",
-//                    update.getMessage().getFrom().getUserName(),
-//                    update.getMessage().getText(),
-//                    chatId,
-//                    DataBaseManager.isRegister(userId, chatId));
-//
-//            InlineKeyboardMarkup keyboardMarkup = InlineKeyboardMarkup.builder()
-//                    .keyboardRow(new InlineKeyboardRow(
-//                            InlineKeyboardButton.builder().text("Кррр").callbackData("i").build()
-//                    ))
-//                    .build();
-//
-//            SendMessage sendMessage = SendMessage.builder()
-//                    .chatId(String.valueOf(chatId))
-//                    .text("Вы геи")
-//                    .replyMarkup(keyboardMarkup)
-//                    .build();
-//
-//            try {
-//                telegramClient.execute(sendMessage);
-//            } catch (TelegramApiException e) {
-//                e.printStackTrace();
-//            }
-//        }
     }
 
     public OkHttpTelegramClient getClient() {

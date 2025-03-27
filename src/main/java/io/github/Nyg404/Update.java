@@ -1,7 +1,8 @@
 package io.github.Nyg404;
 
-import io.github.Nyg404.Utils.DataBaseConnect;
+import io.github.Nyg404.Bd.DataUser;
 import io.github.Nyg404.Utils.DataBaseManager;
+
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
@@ -21,8 +22,8 @@ public class Update {
             long chatId = update.getMessage().getChatId();
             long userId = update.getMessage().getFrom().getId();
 
-            if (!DataBaseManager.isRegister(userId, chatId)){
-                DataBaseManager.addUser(userId, chatId, 1);
+            if (!DataUser.isRegistered(userId, chatId)){
+                DataUser.addUser(userId, chatId, 1, 0);
             }
             // Регистрация: вынесем в RegistrationManager или прямо здесь
             String chatType = update.getMessage().getChat().getType();
@@ -39,7 +40,7 @@ public class Update {
                     update.getMessage().getFrom().getUserName(),
                     update.getMessage().getText(),
                     chatId,
-                    DataBaseManager.isRegister(userId, chatId),
+                    DataUser.isRegistered(userId, chatId),
                     chattypes,
                     DataBaseManager.selectPrefix(chatId));
             ;

@@ -2,7 +2,6 @@ package io.github.Nyg404.Utils;
 
 
 import io.github.Nyg404.Bd.DataServer;
-import io.github.Nyg404.Bd.DataUser;
 import lombok.extern.slf4j.Slf4j;
 
 import java.sql.Connection;
@@ -12,38 +11,9 @@ import java.sql.SQLException;
 import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class DataBaseManager {
-    private static final ConcurrentHashMap<String, DataUser> cache = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<Long, DataServer> serverCache = new ConcurrentHashMap<>();
 
-    public static DataUser of(long userId, long serverId){
-        String cacheKey = userId + ":" + serverId;
-        if(cache.containsKey(cacheKey)) {
-            return cache.get(cacheKey);
-        }
-        try(Connection connection = DataBaseConnect.getInstance().connection()) {
-            String selectuser = "SELECT * FROM Users WHERE user_id = ? AND server_id = ?";
-            try (PreparedStatement statement = connection.prepareStatement(selectuser)){
-                statement.setLong(1, userId);
-                statement.setLong(2, serverId);
-                try(ResultSet rs = statement.executeQuery()) {
-                    if (rs.next()){
-                        DataUser dataUser = new DataUser(rs.getLong("user_id"), rs.getInt("level"));
-                        cache.put(cacheKey, dataUser);
-                        return dataUser;
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-
-        }
-        return null;
-    }
-
-    public static boolean isRegister(long userId, long serverId){
-        return of(userId, serverId) != null;
-    }
-
+    
 
     public static boolean addServerToDB(long serverId, String prefix) {
         String insertServer = "INSERT INTO servers (server_id, prefix) VALUES (?, ?)";
@@ -98,30 +68,7 @@ public class DataBaseManager {
         return false;
     }
 
-    public static void addUser(long userId, long serverId, int level) {
-        String insertuser = "INSERT INTO users(user_id, server_id, level) VALUES (?,?,?)";
-        String cacheKey = userId + ":" + serverId;
 
-        try (Connection connection = DataBaseConnect.getInstance().connection()) {
-            try (PreparedStatement stmp = connection.prepareStatement(insertuser)) {
-                stmp.setLong(1, userId);
-                stmp.setLong(2, serverId);
-                stmp.setInt(3, level);
-
-                int rowsAffected = stmp.executeUpdate();
-                if (rowsAffected > 0) {// Коммит после успешного выполнения
-                    DataUser dataUser = new DataUser(userId, level);
-                    cache.put(cacheKey, dataUser);
-                    System.out.println("Пользователь добавлен в базу данных и кэш.");
-                } else {
-                    System.out.println("Ошибка: Не удалось добавить пользователя.");
-                }
-            }
-        } catch (SQLException e) {
-            System.out.println("SQL Ошибка при добавлении пользователя: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
     public static String selectPrefix(Long serverId){
         if(serverCache.equals(serverId)){
             return serverCache.get(serverId).getPrefix();
